@@ -1,0 +1,13 @@
+[package]
+name = "judgment"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.1.1", version = "0.1.1", features = [
+    "standard-deck",
+] }
+rand = "0.8.5"
+thiserror = "1.0.44"

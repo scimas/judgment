@@ -1,0 +1,2 @@
+[workspace]
+members = ["judgment", "judgment-server", "judgment-client"]
