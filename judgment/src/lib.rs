@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use card_deck::standard_deck::{Card, Rank, StandardDeckBuilder, Suit};
 use errors::Error;
 use player::Player;
+use rand::SeedableRng;
 
 mod errors;
 mod player;
@@ -73,18 +74,18 @@ impl Judgment {
     /// Try to advance the game with the `transition`.
     pub fn update(&mut self, transition: Transition) -> Result<(), Error> {
         let res = match (&mut self.stage, transition) {
-            (Stage::PrePlay, Transition::Deal) => Err(Error::InvalidTransition),
+            (Stage::PrePlay, Transition::Deal { .. }) => Err(Error::InvalidTransition),
             (Stage::PrePlay, Transition::Play { .. }) => Err(Error::InvalidTransition),
             (Stage::PrePlay, Transition::PredictScore { .. }) => Err(Error::InvalidTransition),
-            (Stage::Deal(round), Transition::Deal) => {
+            (Stage::Deal(round), Transition::Deal { seed }) => {
                 let hand_size = round.hand_size;
                 self.stage = Stage::PredictScores(round.clone());
-                self.deal(hand_size);
+                self.deal(hand_size, seed);
                 Ok(())
             }
             (Stage::Deal(_), Transition::Play { .. }) => Err(Error::InvalidTransition),
             (Stage::Deal(_), Transition::PredictScore { .. }) => Err(Error::InvalidTransition),
-            (Stage::PredictScores(_), Transition::Deal) => Err(Error::InvalidTransition),
+            (Stage::PredictScores(_), Transition::Deal { .. }) => Err(Error::InvalidTransition),
             (Stage::PredictScores(_), Transition::Play { .. }) => Err(Error::InvalidTransition),
             (Stage::PredictScores(round), Transition::PredictScore { player, score }) => {
                 if round.player != player {
@@ -112,7 +113,7 @@ impl Judgment {
                 }
                 Ok(())
             }
-            (Stage::Play(_), Transition::Deal) => Err(Error::InvalidTransition),
+            (Stage::Play(_), Transition::Deal { .. }) => Err(Error::InvalidTransition),
             (Stage::Play(round), Transition::Play { player, card }) => {
                 if round.player != player || !self.players[player].has(&card) {
                     return Err(Error::InvalidTransition);
@@ -164,6 +165,8 @@ impl Judgment {
                                 },
                                 predicted_scores: HashMap::new(),
                                 trick_scores: vec![0; self.player_count.into()],
+                                starting_player: (round.starting_player + 1)
+                                    % usize::from(self.player_count),
                             });
                         }
                     }
@@ -193,16 +196,17 @@ impl Judgment {
             trump_suit: Some(Suit::Spades),
             predicted_scores: HashMap::new(),
             trick_scores: vec![0; self.player_count.into()],
+            starting_player: 0,
         };
         self.stage = Stage::Deal(round);
         Ok(())
     }
 
-    fn deal(&mut self, hand_size: u8) {
+    fn deal(&mut self, hand_size: u8, random_seed: [u8; 32]) {
         let mut deck = StandardDeckBuilder::new()
             .subdecks(self.decks.into())
             .build();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand_chacha::ChaCha20Rng::from_seed(random_seed);
         deck.shuffle(&mut rng);
         for player in self.players.iter_mut() {
             player.assign(deck.draw_n(hand_size.into()));
@@ -218,6 +222,7 @@ struct Round {
     trump_suit: Option<Suit>,
     predicted_scores: HashMap<usize, u8>,
     trick_scores: Vec<u8>,
+    starting_player: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -231,7 +236,7 @@ enum Stage {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Transition {
-    Deal,
+    Deal { seed: [u8; 32] },
     Play { player: usize, card: Card },
     PredictScore { player: usize, score: u8 },
 }
