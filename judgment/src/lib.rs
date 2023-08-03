@@ -142,7 +142,7 @@ impl Judgment {
                 if trick_card_comparator(
                     &self.trick[&round.potential_winner],
                     &card,
-                    round.trump_suit,
+                    round.trump_suit.as_ref(),
                 )
                 .is_gt()
                 {
@@ -227,6 +227,10 @@ impl Judgment {
             player.assign(deck.draw_n(hand_size.into()));
         }
     }
+
+    pub fn scores(&self) -> &[i64] {
+        &self.scores
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,6 +260,9 @@ pub enum Transition {
     PredictScore { player: usize, score: u8 },
 }
 
+/// [`Rank::Numeric(2)`] is the lowest and [`Rank::Ace`] is the highest. Suit
+/// ordering has no gameplay significance; it is only meant to arbitrarily order
+/// suits in alternating reds and blacks.
 fn card_comparator(c1: &Card, c2: &Card) -> std::cmp::Ordering {
     match (c1.suit().unwrap(), c2.suit().unwrap()) {
         (s1, s2) if s1 == s2 => match (c1.rank().unwrap(), c2.rank().unwrap()) {
@@ -279,16 +286,20 @@ fn card_comparator(c1: &Card, c2: &Card) -> std::cmp::Ordering {
     }
 }
 
+/// Within the same suit, [`Rank::Numeric(2)`] is the lowest and [`Rank::Ace`]
+/// is the highest. Suits have no ordering except the trump suit, if any, is
+/// better than other suits. If none of the previous conditions can resolve the
+/// ordering, the first played card is better.
 fn trick_card_comparator(
     first: &Card,
     second: &Card,
-    trump_suit: Option<Suit>,
+    trump_suit: Option<&Suit>,
 ) -> std::cmp::Ordering {
     match (first.suit().unwrap(), second.suit().unwrap()) {
         (s1, s2) if s1 == s2 => card_comparator(first, second),
         (_, s2) => {
             // s1 and s2 are not the same here
-            if trump_suit.is_some_and(|suit| &suit == s2) {
+            if trump_suit.is_some_and(|suit| suit == s2) {
                 // s2 is trump, so always better than `first`
                 std::cmp::Ordering::Less
             } else {
@@ -296,6 +307,165 @@ fn trick_card_comparator(
                 // so first card played is better
                 std::cmp::Ordering::Greater
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cmp::Ordering;
+
+    use card_deck::standard_deck::{Card, Rank, Suit};
+
+    use crate::trick_card_comparator;
+
+    #[test]
+    fn test_trick_card_comparison_without_trump() {
+        let card_pairs_comparisons = [
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Clubs, Rank::Numeric(10)),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Numeric(10)),
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Ordering::Less,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Ordering::Equal,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Jack),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Numeric(10)),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Queen),
+                Ordering::Greater,
+            ),
+        ];
+        for (first, second, expected_comparison) in card_pairs_comparisons {
+            assert_eq!(
+                trick_card_comparator(&first, &second, None),
+                expected_comparison,
+                "comparison failed for {first} and {second}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_trick_card_comparison_with_trump() {
+        let card_pairs_comparisons = [
+            // trump same as cards
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Clubs, Rank::Numeric(10)),
+                Some(Suit::Clubs),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Numeric(10)),
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Some(Suit::Clubs),
+                Ordering::Less,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Some(Suit::Clubs),
+                Ordering::Equal,
+            ),
+            // trump distinct from cards
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Clubs, Rank::Numeric(10)),
+                Some(Suit::Diamonds),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Numeric(10)),
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Some(Suit::Diamonds),
+                Ordering::Less,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Some(Suit::Diamonds),
+                Ordering::Equal,
+            ),
+            // trump same as one of the cards
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Jack),
+                Some(Suit::Diamonds),
+                Ordering::Less,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Numeric(10)),
+                Some(Suit::Diamonds),
+                Ordering::Less,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Queen),
+                Some(Suit::Diamonds),
+                Ordering::Less,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Jack),
+                Some(Suit::Clubs),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Numeric(10)),
+                Some(Suit::Clubs),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Queen),
+                Some(Suit::Clubs),
+                Ordering::Greater,
+            ),
+            // trump distinct from cards
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Jack),
+                Some(Suit::Hearts),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Numeric(10)),
+                Some(Suit::Hearts),
+                Ordering::Greater,
+            ),
+            (
+                Card::new_normal(Suit::Clubs, Rank::Jack),
+                Card::new_normal(Suit::Diamonds, Rank::Queen),
+                Some(Suit::Hearts),
+                Ordering::Greater,
+            ),
+        ];
+        for (first, second, trump, expected_comparison) in card_pairs_comparisons {
+            assert_eq!(
+                trick_card_comparator(&first, &second, trump.as_ref()),
+                expected_comparison,
+                "comparison failed for {first}, {second} and {trump:?}"
+            );
         }
     }
 }
