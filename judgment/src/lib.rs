@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use card_deck::standard_deck::{Card, Rank, StandardDeckBuilder, Suit};
-use errors::Error;
+use errors::InvalidTransition;
 use player::Player;
 use rand::SeedableRng;
 
@@ -72,27 +72,39 @@ impl Judgment {
     }
 
     /// Try to advance the game with the `transition`.
-    pub fn update(&mut self, transition: Transition) -> Result<(), Error> {
+    pub fn update(&mut self, transition: Transition) -> Result<(), InvalidTransition> {
         let res = match (&mut self.stage, transition) {
-            (Stage::PrePlay, Transition::Deal { .. }) => Err(Error::InvalidTransition),
-            (Stage::PrePlay, Transition::Play { .. }) => Err(Error::InvalidTransition),
-            (Stage::PrePlay, Transition::PredictScore { .. }) => Err(Error::InvalidTransition),
+            (Stage::PrePlay, Transition::Deal { .. }) => {
+                Err(InvalidTransition::DealBeforeGameStart)
+            }
+            (Stage::PrePlay, Transition::Play { .. }) => {
+                Err(InvalidTransition::PlayBeforeScorePrediction)
+            }
+            (Stage::PrePlay, Transition::PredictScore { .. }) => {
+                Err(InvalidTransition::PredictBeforeDeal)
+            }
             (Stage::Deal(round), Transition::Deal { seed }) => {
                 let hand_size = round.hand_size;
                 self.stage = Stage::PredictScores(round.clone());
                 self.deal(hand_size, seed);
                 Ok(())
             }
-            (Stage::Deal(_), Transition::Play { .. }) => Err(Error::InvalidTransition),
-            (Stage::Deal(_), Transition::PredictScore { .. }) => Err(Error::InvalidTransition),
-            (Stage::PredictScores(_), Transition::Deal { .. }) => Err(Error::InvalidTransition),
-            (Stage::PredictScores(_), Transition::Play { .. }) => Err(Error::InvalidTransition),
+            (Stage::Deal(_), Transition::Play { .. }) => {
+                Err(InvalidTransition::PlayBeforeScorePrediction)
+            }
+            (Stage::Deal(_), Transition::PredictScore { .. }) => {
+                Err(InvalidTransition::PredictBeforeDeal)
+            }
+            (Stage::PredictScores(_), Transition::Deal { .. }) => Err(InvalidTransition::ReDeal),
+            (Stage::PredictScores(_), Transition::Play { .. }) => {
+                Err(InvalidTransition::PlayBeforeScorePrediction)
+            }
             (Stage::PredictScores(round), Transition::PredictScore { player, score }) => {
                 if round.player != player {
-                    return Err(Error::InvalidTransition);
+                    return Err(InvalidTransition::OutOfTurnPlay);
                 }
                 if score > round.hand_size {
-                    return Err(Error::InvalidTransition);
+                    return Err(InvalidTransition::PredictionOutOfRange);
                 }
                 if round.predicted_scores.len() == usize::from(self.player_count - 1) {
                     let prediction_sum = round
@@ -101,7 +113,7 @@ impl Judgment {
                         .map(|v| u16::from(*v))
                         .sum::<u16>();
                     if prediction_sum + u16::from(score) == u16::from(round.hand_size) {
-                        return Err(Error::InvalidTransition);
+                        return Err(InvalidTransition::LastPlayerPrediction);
                     }
                 }
                 round.predicted_scores.insert(player, score);
@@ -113,10 +125,13 @@ impl Judgment {
                 }
                 Ok(())
             }
-            (Stage::Play(_), Transition::Deal { .. }) => Err(Error::InvalidTransition),
+            (Stage::Play(_), Transition::Deal { .. }) => Err(InvalidTransition::ReDeal),
             (Stage::Play(round), Transition::Play { player, card }) => {
-                if round.player != player || !self.players[player].has(&card) {
-                    return Err(Error::InvalidTransition);
+                if round.player != player {
+                    return Err(InvalidTransition::OutOfTurnPlay);
+                }
+                if !self.players[player].has(&card) {
+                    return Err(InvalidTransition::NoSuchPlayerCard);
                 }
                 self.trick.insert(player, card);
                 // SAFETY
@@ -173,8 +188,8 @@ impl Judgment {
                 }
                 Ok(())
             }
-            (Stage::Play(_), Transition::PredictScore { .. }) => Err(Error::InvalidTransition),
-            (Stage::Over { .. }, _) => Err(Error::InvalidTransition),
+            (Stage::Play(_), Transition::PredictScore { .. }) => Err(InvalidTransition::RePredict),
+            (Stage::Over { .. }, _) => Err(InvalidTransition::GameOver),
         };
         if res.is_ok() {
             self.history.push(transition);
@@ -185,9 +200,9 @@ impl Judgment {
     /// Try to start the game.
     ///
     /// Errors if the game is already in progress or finished.
-    pub fn start(&mut self) -> Result<(), Error> {
+    pub fn start(&mut self) -> Result<(), InvalidTransition> {
         if !matches!(self.stage, Stage::PrePlay) {
-            return Err(Error::InvalidTransition);
+            return Err(InvalidTransition::Restart);
         }
         let round = Round {
             player: 0,
