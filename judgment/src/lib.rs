@@ -130,7 +130,7 @@ impl Judgment {
                 if round.player != player {
                     return Err(InvalidTransition::OutOfTurnPlay);
                 }
-                if !self.players[player].has(&card) {
+                if self.players[player].remove(&card).is_none() {
                     return Err(InvalidTransition::NoSuchPlayerCard);
                 }
                 self.trick.insert(player, card);

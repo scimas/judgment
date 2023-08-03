@@ -24,9 +24,13 @@ impl Player {
         &self.hand
     }
 
-    pub(crate) fn has(&self, card: &Card) -> bool {
+    pub(crate) fn search(&self, card: &Card) -> Option<usize> {
         self.hand
             .binary_search_by(|h_card| card_comparator(h_card, card))
-            .is_ok()
+            .ok()
+    }
+
+    pub(crate) fn remove(&mut self, card: &Card) -> Option<Card> {
+        self.search(card).map(|position| self.hand.remove(position))
     }
 }
