@@ -45,6 +45,7 @@ impl Room {
         self.joined_players += 1;
         if self.is_full() {
             let seed = rand::random();
+            self.game.start().unwrap();
             self.game.update(Transition::Deal { seed }).unwrap();
         }
         Ok(claim)
@@ -125,4 +126,22 @@ impl Room {
 pub enum Action {
     Play(Card),
     PredictScore(u8),
+}
+
+#[cfg(test)]
+mod tests {
+    use pasetors::claims::Claims;
+
+    use crate::errors::RoomFull;
+
+    use super::Room;
+
+    #[test]
+    fn test_room_joining() {
+        let mut room = Room::new(2, 2, 1);
+        for _ in 0..2 {
+            assert!(matches!(room.join(), Ok(Claims { .. })));
+        }
+        assert!(matches!(room.join(), Err(RoomFull { .. })));
+    }
 }

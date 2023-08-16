@@ -158,3 +158,42 @@ impl FromRequestParts<Arc<RwLock<Server>>> for AuthenticatedPlayer {
         state.read().await.verify(token.token())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use pasetors::{
+        keys::{AsymmetricKeyPair, Generate},
+        version4::V4,
+    };
+
+    use crate::errors::{RoomJoinError, ServerFull};
+
+    use super::Server;
+
+    fn create_server(rooms: usize) -> Server {
+        let key_pair = AsymmetricKeyPair::<V4>::generate().unwrap();
+        Server::new(key_pair, rooms)
+    }
+
+    #[test]
+    fn test_room_creation() {
+        let mut server = create_server(3);
+        for _ in 0..3 {
+            assert!(matches!(server.create_room(2, 2, 1), Ok(uuid::Uuid { .. })));
+        }
+        assert!(matches!(server.create_room(2, 2, 1), Err(ServerFull)));
+    }
+
+    #[test]
+    fn test_room_joining() {
+        let mut server = create_server(3);
+        let room_id = server.create_room(2, 2, 1).unwrap();
+        for _ in 0..2 {
+            assert!(matches!(server.join(&room_id), Ok(String { .. })));
+        }
+        assert!(matches!(
+            server.join(&room_id),
+            Err(RoomJoinError::RoomFull(..))
+        ));
+    }
+}
