@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use card_deck::standard_deck::{Card, Rank, StandardDeckBuilder, Suit};
-use errors::InvalidTransition;
+pub use errors::InvalidTransition;
 use player::Player;
 use rand::SeedableRng;
 
@@ -21,7 +21,7 @@ pub struct Judgment {
     history: Vec<Transition>,
 }
 
-type Trick = HashMap<usize, Card>;
+pub type Trick = HashMap<usize, Card>;
 
 impl Judgment {
     /// Create a new game of Judgment for `players` and first round having
@@ -230,6 +230,30 @@ impl Judgment {
 
     pub fn scores(&self) -> &[i64] {
         &self.scores
+    }
+
+    pub fn trick(&self) -> &Trick {
+        &self.trick
+    }
+
+    pub fn hand_of_player(&self, player: usize) -> Option<&[Card]> {
+        self.players.get(player).map(|player| player.hand())
+    }
+
+    pub fn is_over(&self) -> bool {
+        matches!(self.stage, Stage::Over)
+    }
+
+    pub fn predicted_scores(&self) -> Option<Vec<u8>> {
+        match &self.stage {
+            Stage::PrePlay | Stage::Deal(_) | Stage::Over => None,
+            Stage::PredictScores(Round {
+                predicted_scores, ..
+            }) => Some(predicted_scores.values().cloned().collect()),
+            Stage::Play(Round {
+                predicted_scores, ..
+            }) => Some(predicted_scores.values().cloned().collect()),
+        }
     }
 }
 

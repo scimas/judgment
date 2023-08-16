@@ -11,4 +11,8 @@ card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.1.1", v
 ] }
 rand = "0.8.5"
 rand_chacha = "0.3.1"
+serde = { version = "1.0.183", features = ["derive"], optional = true }
 thiserror = "1.0.44"
+
+[features]
+serde = ["dep:serde", "card-deck/serde"]

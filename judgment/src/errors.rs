@@ -1,4 +1,5 @@
 #[derive(Debug, thiserror::Error)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum InvalidTransition {
     #[error("cannot deal cards before the game has started")]
     DealBeforeGameStart,
