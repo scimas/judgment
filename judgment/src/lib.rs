@@ -109,14 +109,14 @@ impl Judgment {
                 if round.predicted_scores.len() == usize::from(self.player_count - 1) {
                     let prediction_sum = round
                         .predicted_scores
-                        .values()
-                        .map(|v| u16::from(*v))
+                        .iter()
+                        .filter_map(|opt_v| opt_v.map(u16::from))
                         .sum::<u16>();
                     if prediction_sum + u16::from(score) == u16::from(round.hand_size) {
                         return Err(InvalidTransition::LastPlayerPrediction);
                     }
                 }
-                round.predicted_scores.insert(player, score);
+                round.predicted_scores.insert(player, Some(score));
                 // SAFETY
                 // `as` conversion is fine because `Round { player }` < `Judgment { player_count: u8 }`
                 round.player = usize::from((round.player as u8 + 1) % self.player_count);
@@ -156,7 +156,9 @@ impl Judgment {
                     // check whether the whole round is over.
                     if self.players[0].hand().is_empty() {
                         for (idx, score) in round.trick_scores.iter().enumerate() {
-                            if &round.predicted_scores[&idx] == score {
+                            if round.predicted_scores[idx]
+                                .is_some_and(|prediction| prediction == *score)
+                            {
                                 self.scores[idx] += i64::from(*score);
                             } else {
                                 self.scores[idx] -= i64::from(*score);
@@ -178,7 +180,7 @@ impl Judgment {
                                     },
                                     None => Some(Suit::Spades),
                                 },
-                                predicted_scores: HashMap::new(),
+                                predicted_scores: vec![None; usize::from(self.player_count)],
                                 trick_scores: vec![0; self.player_count.into()],
                                 starting_player: (round.starting_player + 1)
                                     % usize::from(self.player_count),
@@ -209,7 +211,7 @@ impl Judgment {
             potential_winner: 0,
             hand_size: self.starting_hand_size,
             trump_suit: Some(Suit::Spades),
-            predicted_scores: HashMap::new(),
+            predicted_scores: vec![None; usize::from(self.player_count)],
             trick_scores: vec![0; self.player_count.into()],
             starting_player: 0,
         };
@@ -244,15 +246,15 @@ impl Judgment {
         matches!(self.stage, Stage::Over)
     }
 
-    pub fn predicted_scores(&self) -> Option<Vec<u8>> {
+    pub fn predicted_scores(&self) -> Option<&[Option<u8>]> {
         match &self.stage {
             Stage::PrePlay | Stage::Deal(_) | Stage::Over => None,
             Stage::PredictScores(Round {
                 predicted_scores, ..
-            }) => Some(predicted_scores.values().cloned().collect()),
+            }) => Some(predicted_scores),
             Stage::Play(Round {
                 predicted_scores, ..
-            }) => Some(predicted_scores.values().cloned().collect()),
+            }) => Some(predicted_scores),
         }
     }
 }
@@ -263,7 +265,7 @@ struct Round {
     potential_winner: usize,
     hand_size: u8,
     trump_suit: Option<Suit>,
-    predicted_scores: HashMap<usize, u8>,
+    predicted_scores: Vec<Option<u8>>,
     trick_scores: Vec<u8>,
     starting_player: usize,
 }

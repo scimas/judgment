@@ -110,7 +110,7 @@ async fn trick(
 async fn predictions(
     State(server): State<Arc<RwLock<Server>>>,
     Query(payload): Query<RoomPayload>,
-) -> Result<Json<Vec<u8>>, InvalidRoomId> {
+) -> Result<Json<Vec<Option<u8>>>, InvalidRoomId> {
     log::info!("received predictions request");
     let mut receiver = server
         .read()

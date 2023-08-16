@@ -12,7 +12,7 @@ pub struct Room {
     game: Judgment,
     max_players: u8,
     trick_sender: watch::Sender<Trick>,
-    predictions_sender: watch::Sender<Vec<u8>>,
+    predictions_sender: watch::Sender<Vec<Option<u8>>>,
     last_move: Option<Action>,
 }
 
@@ -77,7 +77,7 @@ impl Room {
                 match self.game.update(transition) {
                     Ok(_) => {
                         self.predictions_sender
-                            .send_replace(self.game.predicted_scores().unwrap());
+                            .send_replace(self.game.predicted_scores().unwrap().to_vec());
                         Ok(())
                     }
                     err @ Err(_) => err,
@@ -91,7 +91,7 @@ impl Room {
         self.game.trick()
     }
 
-    pub fn predictions(&self) -> Option<Vec<u8>> {
+    pub fn predictions(&self) -> Option<&[Option<u8>]> {
         self.game.predicted_scores()
     }
     /// Get the hand of a player.
@@ -105,7 +105,7 @@ impl Room {
     }
 
     /// Get the notifier channel that communicates when the predictions change.
-    pub fn predictions_sender(&self) -> &watch::Sender<Vec<u8>> {
+    pub fn predictions_sender(&self) -> &watch::Sender<Vec<Option<u8>>> {
         &self.predictions_sender
     }
 
