@@ -159,10 +159,12 @@ impl Judgment {
                     round.potential_winner = player;
                 }
                 // check whether current trick turn is complete.
-                if self.trick.len() == self.player_count.into() {
+                if self.trick.iter().filter(|card| card.is_some()).count()
+                    == self.player_count.into()
+                {
                     round.trick_scores[round.potential_winner] += 1;
                     round.player = round.potential_winner;
-                    self.trick.clear();
+                    self.trick.iter_mut().for_each(|card| *card = None);
                     // check whether the whole round is over.
                     if self.players[0].hand().is_empty() {
                         for (idx, score) in round.trick_scores.iter().enumerate() {
