@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use card_deck::standard_deck::{Card, Rank, StandardDeckBuilder, Suit};
 pub use errors::InvalidTransition;
 use player::Player;
@@ -21,7 +19,7 @@ pub struct Judgment {
     history: Vec<Transition>,
 }
 
-pub type Trick = HashMap<usize, Card>;
+pub type Trick = Vec<Option<Card>>;
 
 impl Judgment {
     /// Create a new game of Judgment for `players` and first round having
@@ -62,7 +60,7 @@ impl Judgment {
         Judgment {
             stage: Stage::PrePlay,
             players: vec![Player::new(); usize::from(players)],
-            trick: Trick::with_capacity(usize::from(players)),
+            trick: vec![None; usize::from(players)],
             scores: vec![0; usize::from(players)],
             decks: actual_decks,
             player_count: players,
@@ -106,7 +104,13 @@ impl Judgment {
                 if score > round.hand_size {
                     return Err(InvalidTransition::PredictionOutOfRange);
                 }
-                if round.predicted_scores.len() == usize::from(self.player_count - 1) {
+                if round
+                    .predicted_scores
+                    .iter()
+                    .filter(|score| score.is_some())
+                    .count()
+                    == usize::from(self.player_count - 1)
+                {
                     let prediction_sum = round
                         .predicted_scores
                         .iter()
@@ -116,11 +120,17 @@ impl Judgment {
                         return Err(InvalidTransition::LastPlayerPrediction);
                     }
                 }
-                round.predicted_scores.insert(player, Some(score));
+                round.predicted_scores[player] = Some(score);
                 // SAFETY
                 // `as` conversion is fine because `Round { player }` < `Judgment { player_count: u8 }`
                 round.player = usize::from((round.player as u8 + 1) % self.player_count);
-                if round.predicted_scores.len() == usize::from(self.player_count) {
+                if round
+                    .predicted_scores
+                    .iter()
+                    .filter(|score| score.is_some())
+                    .count()
+                    == usize::from(self.player_count)
+                {
                     self.stage = Stage::Play(round.clone());
                 }
                 Ok(())
@@ -133,14 +143,14 @@ impl Judgment {
                 if self.players[player].remove(&card).is_none() {
                     return Err(InvalidTransition::NoSuchPlayerCard);
                 }
-                self.trick.insert(player, card);
+                self.trick[player] = Some(card);
                 // SAFETY
                 // `as` conversion is fine because `Round { player }` < `Judgment { player_count: u8 }`
                 round.player = usize::from((round.player as u8 + 1) % self.player_count);
                 // The play ends ^ here. The rest is for updating the state.
                 // check whether the winning player should be updated.
                 if trick_card_comparator(
-                    &self.trick[&round.potential_winner],
+                    &self.trick[round.potential_winner].unwrap(),
                     &card,
                     round.trump_suit.as_ref(),
                 )
