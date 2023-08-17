@@ -1,0 +1,64 @@
+.trick {
+    font-size: 72px;
+}
+
+.trick_card {
+    display: inline;
+}
+
+table,
+td,
+th {
+    border: 1px solid;
+}
+
+.hand {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-areas: "spades hearts clubs diamonds";
+    line-height: 1;
+}
+
+.spades {
+    grid-area: spades;
+}
+
+.hearts {
+    grid-area: hearts;
+    color: red;
+}
+
+.clubs {
+    grid-area: clubs;
+}
+
+.diamonds {
+    grid-area: diamonds;
+    color: red;
+}
+
+.hand_stack {
+    font-size: 72px;
+    justify-self: center;
+}
+
+.playable {
+    text-decoration: none;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0;
+    margin: 0;
+    border: none;
+    font-size: 64px;
+    color: inherit;
+}
+
+@media screen and (min-width: 600px) {
+    .trick {
+        font-size: 30px;
+    }
+
+    .playable {
+        font-size: 30px;
+    }
+}
