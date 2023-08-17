@@ -12,7 +12,6 @@ card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.1.1", v
 ] }
 either = { version = "1.9.0", features = ["serde"] }
 getrandom = { version = "0.2.10", features = ["js"] }
-gloo-console = "0.3.0"
 gloo-dialogs = "0.2.0"
 gloo-net = "0.4.0"
 judgment = { version = "0.1.0", path = "../judgment", features = ["serde"] }
