@@ -23,4 +23,6 @@ pub enum InvalidTransition {
     LastPlayerPrediction,
     #[error("the player does not have the played card")]
     NoSuchPlayerCard,
+    #[error("must match the suit of the first card when possible")]
+    SuitMismatch,
 }

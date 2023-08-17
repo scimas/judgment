@@ -37,7 +37,8 @@ pub fn judgment_router<P: AsRef<Path>>(
         .route("/api/trick", get(trick))
         .route("/api/predictions", get(predictions))
         .route("/api/my_hand", get(hand_of_player))
-        .route("/api/last_move", get(last_move))
+        .route("/api/scores", get(scores))
+        .route("/api/round_scores", get(round_scores))
         .fallback_service(serve_dir)
         .with_state(server.clone());
 
@@ -143,18 +144,33 @@ async fn hand_of_player(
     ))
 }
 
-async fn last_move(
+async fn scores(
     State(server): State<Arc<RwLock<Server>>>,
     Query(payload): Query<RoomPayload>,
-) -> Result<Json<Option<Action>>, InvalidRoomId> {
-    log::info!("received last move request");
+) -> Result<Json<Vec<i64>>, InvalidRoomId> {
+    log::info!("received scores request");
     Ok(Json(
         server
             .read()
             .await
             .room(&payload.room_id)?
-            .last_move()
-            .cloned(),
+            .scores()
+            .to_vec(),
+    ))
+}
+
+async fn round_scores(
+    State(server): State<Arc<RwLock<Server>>>,
+    Query(payload): Query<RoomPayload>,
+) -> Result<Json<Option<Vec<u8>>>, InvalidRoomId> {
+    log::info!("received scores request");
+    Ok(Json(
+        server
+            .read()
+            .await
+            .room(&payload.room_id)?
+            .round_scores()
+            .map(|v| v.to_vec()),
     ))
 }
 

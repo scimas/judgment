@@ -12,6 +12,7 @@ pub struct Judgment {
     stage: Stage,
     players: Vec<Player>,
     trick: Trick,
+    first_of_trick: Option<Card>,
     scores: Vec<i64>,
     decks: u8,
     player_count: u8,
@@ -61,6 +62,7 @@ impl Judgment {
             stage: Stage::PrePlay,
             players: vec![Player::new(); usize::from(players)],
             trick: vec![None; usize::from(players)],
+            first_of_trick: None,
             scores: vec![0; usize::from(players)],
             decks: actual_decks,
             player_count: players,
@@ -140,6 +142,15 @@ impl Judgment {
                 if round.player != player {
                     return Err(InvalidTransition::OutOfTurnPlay);
                 }
+                if let Some(first_card) = &self.first_of_trick {
+                    if card.suit() != first_card.suit()
+                        && self.players[player].has_suit(first_card.suit().unwrap())
+                    {
+                        return Err(InvalidTransition::SuitMismatch);
+                    }
+                } else {
+                    self.first_of_trick = Some(card);
+                }
                 if self.players[player].remove(&card).is_none() {
                     return Err(InvalidTransition::NoSuchPlayerCard);
                 }
@@ -154,7 +165,7 @@ impl Judgment {
                     &card,
                     round.trump_suit.as_ref(),
                 )
-                .is_gt()
+                .is_lt()
                 {
                     round.potential_winner = player;
                 }
@@ -165,15 +176,18 @@ impl Judgment {
                     round.trick_scores[round.potential_winner] += 1;
                     round.player = round.potential_winner;
                     self.trick.iter_mut().for_each(|card| *card = None);
+                    self.first_of_trick.take();
                     // check whether the whole round is over.
                     if self.players[0].hand().is_empty() {
                         for (idx, score) in round.trick_scores.iter().enumerate() {
                             if round.predicted_scores[idx]
                                 .is_some_and(|prediction| prediction == *score)
                             {
-                                self.scores[idx] += i64::from(*score);
+                                self.scores[idx] +=
+                                    i64::from(round.predicted_scores[idx].take().unwrap()).max(1);
                             } else {
-                                self.scores[idx] -= i64::from(*score);
+                                self.scores[idx] -=
+                                    i64::from(round.predicted_scores[idx].take().unwrap()).max(1);
                             }
                         }
                         if round.hand_size == 1 {
@@ -267,6 +281,13 @@ impl Judgment {
             Stage::Play(Round {
                 predicted_scores, ..
             }) => Some(predicted_scores),
+        }
+    }
+
+    pub fn round_scores(&self) -> Option<&[u8]> {
+        match &self.stage {
+            Stage::PrePlay | Stage::Deal(_) | Stage::PredictScores(_) | Stage::Over => None,
+            Stage::Play(Round { trick_scores, .. }) => Some(trick_scores),
         }
     }
 }

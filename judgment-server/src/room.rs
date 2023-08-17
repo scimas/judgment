@@ -13,7 +13,6 @@ pub struct Room {
     max_players: u8,
     trick_sender: watch::Sender<Trick>,
     predictions_sender: watch::Sender<Vec<Option<u8>>>,
-    last_move: Option<Action>,
 }
 
 impl Room {
@@ -22,14 +21,13 @@ impl Room {
     pub fn new(players: u8, starting_hand_size: u8, decks: u8) -> Self {
         let game = Judgment::new(players, starting_hand_size, Some(decks));
         let (trick_sender, _) = watch::channel(game.trick().clone());
-        let (prediction_sender, _) = watch::channel(Vec::new());
+        let (predictions_sender, _) = watch::channel(Vec::new());
         Room {
             joined_players: 0,
             game,
             max_players: players,
             trick_sender,
-            predictions_sender: prediction_sender,
-            last_move: None,
+            predictions_sender,
         }
     }
 
@@ -44,9 +42,9 @@ impl Room {
         claim.subject(&self.joined_players.to_string()).unwrap();
         self.joined_players += 1;
         if self.is_full() {
-            let seed = rand::random();
             self.game.start().unwrap();
-            self.game.update(Transition::Deal { seed }).unwrap();
+            self.play(Action::Deal, usize::from(self.max_players))
+                .unwrap();
         }
         Ok(claim)
     }
@@ -67,7 +65,6 @@ impl Room {
                 match self.game.update(transition) {
                     Ok(_) => {
                         self.trick_sender.send_replace(self.trick().clone());
-                        self.last_move = Some(action);
                         Ok(())
                     }
                     err @ Err(_) => err,
@@ -75,6 +72,18 @@ impl Room {
             }
             Action::PredictScore(score) => {
                 let transition = Transition::PredictScore { player, score };
+                match self.game.update(transition) {
+                    Ok(_) => {
+                        self.predictions_sender
+                            .send_replace(self.game.predicted_scores().unwrap().to_vec());
+                        Ok(())
+                    }
+                    err @ Err(_) => err,
+                }
+            }
+            Action::Deal => {
+                let seed = rand::random();
+                let transition = Transition::Deal { seed };
                 match self.game.update(transition) {
                     Ok(_) => {
                         self.predictions_sender
@@ -115,9 +124,12 @@ impl Room {
         self.game.is_over()
     }
 
-    /// Get the last played valid move.
-    pub fn last_move(&self) -> Option<&Action> {
-        self.last_move.as_ref()
+    pub fn scores(&self) -> &[i64] {
+        self.game.scores()
+    }
+
+    pub fn round_scores(&self) -> Option<&[u8]> {
+        self.game.round_scores()
     }
 }
 
@@ -126,6 +138,7 @@ impl Room {
 pub enum Action {
     Play(Card),
     PredictScore(u8),
+    Deal,
 }
 
 #[cfg(test)]

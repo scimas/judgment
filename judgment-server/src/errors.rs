@@ -1,7 +1,6 @@
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use judgment::InvalidTransition;
 use serde::Serialize;
-use serde_json::json;
 
 #[derive(Debug, thiserror::Error, Serialize)]
 #[error("room is full, capacity: {max_players}")]
@@ -17,25 +16,23 @@ pub struct TooEarly;
 #[error("not a valid player Id")]
 pub struct InvalidPlayerId;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, thiserror::Error, Serialize)]
+#[error("invalid token")]
 pub struct InvalidToken;
 
 impl IntoResponse for InvalidToken {
     fn into_response(self) -> axum::response::Response {
-        StatusCode::UNAUTHORIZED.into_response()
+        (StatusCode::UNAUTHORIZED, Json(self)).into_response()
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, thiserror::Error, Serialize)]
+#[error("no space left in server for another room")]
 pub struct ServerFull;
 
 impl IntoResponse for ServerFull {
     fn into_response(self) -> axum::response::Response {
-        (
-            StatusCode::CONFLICT,
-            Json(json!({"error": "no space left in server for another game"})),
-        )
-            .into_response()
+        (StatusCode::CONFLICT, Json(self)).into_response()
     }
 }
 
@@ -45,11 +42,7 @@ pub struct InvalidRoomId;
 
 impl IntoResponse for InvalidRoomId {
     fn into_response(self) -> axum::response::Response {
-        (
-            StatusCode::NOT_FOUND,
-            Json(json!({"error": self.to_string()})),
-        )
-            .into_response()
+        (StatusCode::NOT_FOUND, Json(self)).into_response()
     }
 }
 
@@ -63,11 +56,7 @@ pub enum RoomJoinError {
 
 impl IntoResponse for RoomJoinError {
     fn into_response(self) -> axum::response::Response {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": self.to_string()})),
-        )
-            .into_response()
+        (StatusCode::BAD_REQUEST, Json(self)).into_response()
     }
 }
 
@@ -81,11 +70,7 @@ pub enum PlayError {
 
 impl IntoResponse for PlayError {
     fn into_response(self) -> axum::response::Response {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error": self.to_string()})),
-        )
-            .into_response()
+        (StatusCode::BAD_REQUEST, Json(self)).into_response()
     }
 }
 
@@ -99,10 +84,6 @@ pub enum ResourceDoesNotExist {
 
 impl IntoResponse for ResourceDoesNotExist {
     fn into_response(self) -> axum::response::Response {
-        (
-            StatusCode::NOT_FOUND,
-            Json(json!({"error": self.to_string()})),
-        )
-            .into_response()
+        (StatusCode::NOT_FOUND, Json(self)).into_response()
     }
 }
