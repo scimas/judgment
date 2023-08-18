@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 pub mod app;
 mod player;
+mod scores;
 mod trick;
 
 #[derive(Debug, thiserror::Error, Deserialize)]

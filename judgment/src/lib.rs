@@ -72,8 +72,12 @@ impl Judgment {
     }
 
     /// Try to advance the game with the `transition`.
-    pub fn update(&mut self, transition: Transition) -> Result<(), InvalidTransition> {
+    pub fn update(
+        &mut self,
+        transition: Transition,
+    ) -> Result<Vec<StateUpdate>, InvalidTransition> {
         let res = match (&mut self.stage, transition) {
+            // invalid combinations
             (Stage::PrePlay, Transition::Deal { .. }) => {
                 Err(InvalidTransition::DealBeforeGameStart)
             }
@@ -82,12 +86,6 @@ impl Judgment {
             }
             (Stage::PrePlay, Transition::PredictScore { .. }) => {
                 Err(InvalidTransition::PredictBeforeDeal)
-            }
-            (Stage::Deal(round), Transition::Deal { seed }) => {
-                let hand_size = round.hand_size;
-                self.stage = Stage::PredictScores(round.clone());
-                self.deal(hand_size, seed);
-                Ok(())
             }
             (Stage::Deal(_), Transition::Play { .. }) => {
                 Err(InvalidTransition::PlayBeforeScorePrediction)
@@ -98,6 +96,16 @@ impl Judgment {
             (Stage::PredictScores(_), Transition::Deal { .. }) => Err(InvalidTransition::ReDeal),
             (Stage::PredictScores(_), Transition::Play { .. }) => {
                 Err(InvalidTransition::PlayBeforeScorePrediction)
+            }
+            (Stage::Play(_), Transition::Deal { .. }) => Err(InvalidTransition::ReDeal),
+            (Stage::Play(_), Transition::PredictScore { .. }) => Err(InvalidTransition::RePredict),
+            (Stage::Over { .. }, _) => Err(InvalidTransition::GameOver),
+            // valid combinations
+            (Stage::Deal(round), Transition::Deal { seed }) => {
+                let hand_size = round.hand_size;
+                self.stage = Stage::PredictScores(round.clone());
+                self.deal(hand_size, seed);
+                Ok(vec![StateUpdate::CardsDealt])
             }
             (Stage::PredictScores(round), Transition::PredictScore { player, score }) => {
                 if round.player != player {
@@ -123,6 +131,7 @@ impl Judgment {
                     }
                 }
                 round.predicted_scores[player] = Some(score);
+                let return_val = StateUpdate::Predictions(round.predicted_scores.clone());
                 // SAFETY
                 // `as` conversion is fine because `Round { player }` < `Judgment { player_count: u8 }`
                 round.player = usize::from((round.player as u8 + 1) % self.player_count);
@@ -135,9 +144,8 @@ impl Judgment {
                 {
                     self.stage = Stage::Play(round.clone());
                 }
-                Ok(())
+                Ok(vec![return_val])
             }
-            (Stage::Play(_), Transition::Deal { .. }) => Err(InvalidTransition::ReDeal),
             (Stage::Play(round), Transition::Play { player, card }) => {
                 if round.player != player {
                     return Err(InvalidTransition::OutOfTurnPlay);
@@ -155,6 +163,8 @@ impl Judgment {
                     return Err(InvalidTransition::NoSuchPlayerCard);
                 }
                 self.trick[player] = Some(card);
+                let trick_update = StateUpdate::Trick(self.trick.clone());
+                let mut return_val = vec![trick_update];
                 // SAFETY
                 // `as` conversion is fine because `Round { player }` < `Judgment { player_count: u8 }`
                 round.player = usize::from((round.player as u8 + 1) % self.player_count);
@@ -174,6 +184,7 @@ impl Judgment {
                     == self.player_count.into()
                 {
                     round.trick_scores[round.potential_winner] += 1;
+                    return_val.push(StateUpdate::RoundScores(round.trick_scores.clone()));
                     round.player = round.potential_winner;
                     self.trick.iter_mut().for_each(|card| *card = None);
                     self.first_of_trick.take();
@@ -190,6 +201,7 @@ impl Judgment {
                                     i64::from(round.predicted_scores[idx].take().unwrap()).max(1);
                             }
                         }
+                        return_val.push(StateUpdate::GameScores(self.scores.clone()));
                         if round.hand_size == 1 {
                             self.stage = Stage::Over;
                         } else {
@@ -214,10 +226,8 @@ impl Judgment {
                         }
                     }
                 }
-                Ok(())
+                Ok(return_val)
             }
-            (Stage::Play(_), Transition::PredictScore { .. }) => Err(InvalidTransition::RePredict),
-            (Stage::Over { .. }, _) => Err(InvalidTransition::GameOver),
         };
         if res.is_ok() {
             self.history.push(transition);
@@ -317,6 +327,16 @@ pub enum Transition {
     Deal { seed: [u8; 32] },
     Play { player: usize, card: Card },
     PredictScore { player: usize, score: u8 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum StateUpdate {
+    Trick(Trick),
+    Predictions(Vec<Option<u8>>),
+    RoundScores(Vec<u8>),
+    GameScores(Vec<i64>),
+    CardsDealt,
 }
 
 /// [`Rank::Numeric(2)`] is the lowest and [`Rank::Ace`] is the highest. Suit

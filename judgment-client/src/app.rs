@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use either::Either;
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
@@ -7,10 +5,11 @@ use serde_json::json;
 use uuid::Uuid;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
-use yew::{html, platform::time::sleep, Component, Html, InputEvent};
+use yew::{html, Component, Html, InputEvent};
 
-use crate::{player::Player, trick::Trick, InvalidRoomId};
+use crate::{player::Player, scores::Scores, trick::Trick, InvalidRoomId};
 
+#[derive(Debug, PartialEq, Default)]
 pub struct App {
     room_id: Option<Uuid>,
     token: Option<String>,
@@ -18,9 +17,6 @@ pub struct App {
     players_input: Option<u8>,
     hand_size_input: Option<u8>,
     decks_input: Option<u8>,
-    scores: Vec<i64>,
-    predictions: Vec<Option<u8>>,
-    round_scores: Vec<u8>,
 }
 
 pub enum Msg {
@@ -33,33 +29,14 @@ pub enum Msg {
     DisplayError(String),
     JoinedRoom(Auth, RoomPayload),
     CreatedRoom(RoomPayload),
-    QueryScores,
-    ScoresUpdated(Vec<i64>),
-    QueryPredictions,
-    PredictionsUpdated(Vec<Option<u8>>),
-    QueryRoundScores,
-    RoundScoresUpdated(Vec<u8>),
 }
 
 impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(ctx: &yew::Context<Self>) -> Self {
-        ctx.link().send_message(Msg::QueryScores);
-        ctx.link().send_message(Msg::QueryPredictions);
-        ctx.link().send_message(Msg::QueryRoundScores);
-        Self {
-            room_id: None,
-            token: None,
-            room_id_input: None,
-            players_input: None,
-            hand_size_input: None,
-            decks_input: None,
-            scores: Vec::new(),
-            predictions: Vec::new(),
-            round_scores: Vec::new(),
-        }
+    fn create(_ctx: &yew::Context<Self>) -> Self {
+        App::default()
     }
 
     fn view(&self, ctx: &yew::Context<Self>) -> Html {
@@ -69,51 +46,7 @@ impl Component for App {
                     <div class="app">
                         <Trick room_id={room_id}/>
                         <Player room_id={room_id} token={token.clone()}/>
-                        <details class="scores" open=true>
-                            <summary>{"Predictions"}</summary>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        {(0..self.predictions.len()).map(|idx| html!{<th scope="col">{idx}</th>}).collect::<Html>()}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        {self.predictions.iter().map(|pred| html!{<td>{pred.map(|s| s.to_string()).unwrap_or("-".to_string())}</td>}).collect::<Html>()}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </details>
-                        <details class="scores" open=true>
-                            <summary>{"Round Scores"}</summary>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        {(0..self.round_scores.len()).map(|idx| html!{<th scope="col">{idx}</th>}).collect::<Html>()}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        {self.round_scores.iter().map(|score| html!{<td>{score}</td>}).collect::<Html>()}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </details>
-                        <details class="scores">
-                            <summary>{"Scores"}</summary>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        {(0..self.scores.len()).map(|idx| html!{<th scope="col">{idx}</th>}).collect::<Html>()}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        {self.scores.iter().map(|score| html!{<td>{score}</td>}).collect::<Html>()}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </details>
+                        <Scores room_id={room_id}/>
                         <details>
                             <summary>{"Room ID"}</summary>
                             {room_id}
@@ -261,126 +194,6 @@ impl Component for App {
                 ctx.link().send_message(Msg::JoinRoom);
                 false
             }
-            Msg::QueryScores => {
-                if let Some(room_id) = self.room_id {
-                    let room_id = room_id;
-                    ctx.link().send_future(async move {
-                        match query_scores(room_id).await {
-                            Ok(scores) => Msg::ScoresUpdated(scores),
-                            Err(QueryScoresError::InvalidRoomId(err)) => {
-                                Msg::DisplayError(err.to_string())
-                            }
-                            Err(QueryScoresError::Network(_) | QueryScoresError::Serde(_)) => {
-                                Msg::DisplayError(
-                                    "server or network related issue, try again after some time"
-                                        .to_string(),
-                                )
-                            }
-                        }
-                    });
-                } else {
-                    ctx.link().send_future(async move {
-                        sleep(Duration::from_secs(15)).await;
-                        Msg::QueryScores
-                    });
-                }
-                false
-            }
-            Msg::ScoresUpdated(scores) => {
-                ctx.link().send_future(async move {
-                    sleep(Duration::from_secs(15)).await;
-                    Msg::QueryScores
-                });
-                if self.scores == scores {
-                    false
-                } else {
-                    self.scores = scores;
-                    true
-                }
-            }
-            Msg::QueryPredictions => {
-                if let Some(room_id) = self.room_id {
-                    let room_id = room_id;
-                    ctx.link().send_future(async move {
-                        match query_predictions(room_id).await {
-                            Ok(predictions) => Msg::PredictionsUpdated(predictions),
-                            Err(QueryScoresError::InvalidRoomId(err)) => {
-                                Msg::DisplayError(err.to_string())
-                            }
-                            Err(QueryScoresError::Network(_) | QueryScoresError::Serde(_)) => {
-                                Msg::DisplayError(
-                                    "server or network related issue, try again after some time"
-                                        .to_string(),
-                                )
-                            }
-                        }
-                    });
-                } else {
-                    ctx.link().send_future(async move {
-                        sleep(Duration::from_secs(15)).await;
-                        Msg::QueryPredictions
-                    });
-                }
-                false
-            }
-            Msg::PredictionsUpdated(predictions) => {
-                if self.predictions == predictions {
-                    ctx.link().send_future(async move {
-                        sleep(Duration::from_secs(15)).await;
-                        Msg::QueryPredictions
-                    });
-                    false
-                } else {
-                    ctx.link().send_future(async move {
-                        sleep(Duration::from_secs(5)).await;
-                        Msg::QueryPredictions
-                    });
-                    self.predictions = predictions;
-                    true
-                }
-            }
-            Msg::QueryRoundScores => {
-                if let Some(room_id) = self.room_id {
-                    let room_id = room_id;
-                    ctx.link().send_future(async move {
-                        match query_round_scores(room_id).await {
-                            Ok(Some(scores)) => Msg::RoundScoresUpdated(scores),
-                            Ok(None) => Msg::RoundScoresUpdated(Vec::new()),
-                            Err(QueryScoresError::InvalidRoomId(err)) => {
-                                Msg::DisplayError(err.to_string())
-                            }
-                            Err(QueryScoresError::Network(_) | QueryScoresError::Serde(_)) => {
-                                Msg::DisplayError(
-                                    "server or network related issue, try again after some time"
-                                        .to_string(),
-                                )
-                            }
-                        }
-                    });
-                } else {
-                    ctx.link().send_future(async move {
-                        sleep(Duration::from_secs(15)).await;
-                        Msg::QueryRoundScores
-                    });
-                }
-                false
-            }
-            Msg::RoundScoresUpdated(scores) => {
-                if self.round_scores == scores {
-                    ctx.link().send_future(async move {
-                        sleep(Duration::from_secs(5)).await;
-                        Msg::QueryRoundScores
-                    });
-                    false
-                } else {
-                    ctx.link().send_future(async move {
-                        sleep(Duration::from_secs(15)).await;
-                        Msg::QueryRoundScores
-                    });
-                    self.round_scores = scores;
-                    true
-                }
-            }
         }
     }
 }
@@ -467,59 +280,4 @@ enum JoinRoomError {
     Network(#[from] gloo_net::Error),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
-}
-
-async fn query_scores(room_id: Uuid) -> Result<Vec<i64>, QueryScoresError> {
-    let response = Request::get("/judgment/api/scores")
-        .query([("room_id", room_id.to_string())])
-        .send()
-        .await?;
-    let body = response.text().await?;
-    let mut json_deserializer = serde_json::Deserializer::from_str(&body);
-    let deserialized: Either<Vec<i64>, InvalidRoomId> =
-        either::serde_untagged::deserialize(&mut json_deserializer)?;
-    match deserialized {
-        Either::Left(scores) => Ok(scores),
-        Either::Right(err) => Err(err.into()),
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-enum QueryScoresError {
-    #[error(transparent)]
-    InvalidRoomId(#[from] InvalidRoomId),
-    #[error(transparent)]
-    Network(#[from] gloo_net::Error),
-    #[error(transparent)]
-    Serde(#[from] serde_json::Error),
-}
-
-async fn query_predictions(room_id: Uuid) -> Result<Vec<Option<u8>>, QueryScoresError> {
-    let response = Request::get("/judgment/api/predictions")
-        .query([("room_id", room_id.to_string())])
-        .send()
-        .await?;
-    let body = response.text().await?;
-    let mut json_deserializer = serde_json::Deserializer::from_str(&body);
-    let deserialized: Either<Vec<Option<u8>>, InvalidRoomId> =
-        either::serde_untagged::deserialize(&mut json_deserializer)?;
-    match deserialized {
-        Either::Left(predictions) => Ok(predictions),
-        Either::Right(err) => Err(err.into()),
-    }
-}
-
-async fn query_round_scores(room_id: Uuid) -> Result<Option<Vec<u8>>, QueryScoresError> {
-    let response = Request::get("/judgment/api/round_scores")
-        .query([("room_id", room_id.to_string())])
-        .send()
-        .await?;
-    let body = response.text().await?;
-    let mut json_deserializer = serde_json::Deserializer::from_str(&body);
-    let deserialized: Either<Option<Vec<u8>>, InvalidRoomId> =
-        either::serde_untagged::deserialize(&mut json_deserializer)?;
-    match deserialized {
-        Either::Left(scores) => Ok(scores),
-        Either::Right(err) => Err(err.into()),
-    }
 }

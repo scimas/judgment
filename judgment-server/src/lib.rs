@@ -149,29 +149,41 @@ async fn scores(
     Query(payload): Query<RoomPayload>,
 ) -> Result<Json<Vec<i64>>, InvalidRoomId> {
     log::info!("received scores request");
-    Ok(Json(
-        server
-            .read()
-            .await
-            .room(&payload.room_id)?
-            .scores()
-            .to_vec(),
-    ))
+    let mut receiver = server
+        .read()
+        .await
+        .room(&payload.room_id)?
+        .game_scores_sender()
+        .subscribe();
+    let scores = {
+        tokio::select! {
+            _ = receiver.changed() => (),
+            _ = tokio::time::sleep(Duration::from_secs(10)) => ()
+        };
+        receiver.borrow().clone()
+    };
+    Ok(Json(scores))
 }
 
 async fn round_scores(
     State(server): State<Arc<RwLock<Server>>>,
     Query(payload): Query<RoomPayload>,
-) -> Result<Json<Option<Vec<u8>>>, InvalidRoomId> {
-    log::info!("received scores request");
-    Ok(Json(
-        server
-            .read()
-            .await
-            .room(&payload.room_id)?
-            .round_scores()
-            .map(|v| v.to_vec()),
-    ))
+) -> Result<Json<Vec<u8>>, InvalidRoomId> {
+    log::info!("received round scores request");
+    let mut receiver = server
+        .read()
+        .await
+        .room(&payload.room_id)?
+        .round_scores_sender()
+        .subscribe();
+    let scores = {
+        tokio::select! {
+            _ = receiver.changed() => (),
+            _ = tokio::time::sleep(Duration::from_secs(10)) => ()
+        };
+        receiver.borrow().clone()
+    };
+    Ok(Json(scores))
 }
 
 #[derive(Debug, Serialize)]
