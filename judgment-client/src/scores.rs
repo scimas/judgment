@@ -1,3 +1,5 @@
+use std::iter;
+
 use either::Either;
 use gloo_net::http::Request;
 use uuid::Uuid;
@@ -46,12 +48,12 @@ impl Component for Scores {
                     <table>
                         <thead>
                             <tr>
-                                {(0..self.predictions.len()).map(|idx| html!{<th scope="col">{idx}</th>}).collect::<Html>()}
+                                {iter::once(html!{<th scope="row">{"Player"}</th>}).chain((0..self.predictions.len()).map(|idx| html!{<th scope="col">{idx}</th>})).collect::<Html>()}
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                {self.predictions.iter().map(|pred| html!{<td>{pred.map(|s| s.to_string()).unwrap_or("-".to_string())}</td>}).collect::<Html>()}
+                                {iter::once(html!{<th scope="row">{"Prediction"}</th>}).chain(self.predictions.iter().map(|pred| html!{<td>{pred.map(|s| s.to_string()).unwrap_or("-".to_string())}</td>})).collect::<Html>()}
                             </tr>
                         </tbody>
                     </table>
@@ -61,27 +63,27 @@ impl Component for Scores {
                     <table>
                         <thead>
                             <tr>
-                                {(0..self.round_scores.len()).map(|idx| html!{<th scope="col">{idx}</th>}).collect::<Html>()}
+                                {iter::once(html!{<th scope="row">{"Player"}</th>}).chain((0..self.round_scores.len()).map(|idx| html!{<th scope="col">{idx}</th>})).collect::<Html>()}
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                {self.round_scores.iter().map(|score| html!{<td>{score}</td>}).collect::<Html>()}
+                                {iter::once(html!{<th scope="row">{"Score"}</th>}).chain(self.round_scores.iter().map(|score| html!{<td>{score}</td>})).collect::<Html>()}
                             </tr>
                         </tbody>
                     </table>
                 </details>
                 <details class="scores">
-                    <summary>{"Scores"}</summary>
+                    <summary>{"Game Scores"}</summary>
                     <table>
                         <thead>
                             <tr>
-                                {(0..self.scores.len()).map(|idx| html!{<th scope="col">{idx}</th>}).collect::<Html>()}
+                                {iter::once(html!{<th scope="row">{"Player"}</th>}).chain((0..self.scores.len()).map(|idx| html!{<th scope="col">{idx}</th>})).collect::<Html>()}
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                {self.scores.iter().map(|score| html!{<td>{score}</td>}).collect::<Html>()}
+                                {iter::once(html!{<th scope="row">{"Score"}</th>}).chain(self.scores.iter().map(|score| html!{<td>{score}</td>})).collect::<Html>()}
                             </tr>
                         </tbody>
                     </table>
