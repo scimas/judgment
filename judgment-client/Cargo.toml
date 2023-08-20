@@ -1,12 +1,12 @@
 [package]
 name = "judgment-client"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.1.1", version = "0.1.1", features = [
+card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.2.1", version = "0.2.1", features = [
     "standard-deck",
     "serde",
 ] }
@@ -14,8 +14,9 @@ either = { version = "1.9.0", features = ["serde"] }
 getrandom = { version = "0.2.10", features = ["js"] }
 gloo-dialogs = "0.2.0"
 gloo-net = "0.4.0"
-judgment = { version = "0.1.0", path = "../judgment", features = ["serde"] }
-serde = { version = "1.0.183", features = ["derive"] }
+judgment = { version = "0.3.0", path = "../judgment", features = ["serde"] }
+# https://github.com/serde-rs/serde/issues/2538
+serde = { version = "<=1.0.171", features = ["derive"] }
 serde_json = "1.0.105"
 thiserror = "1.0.46"
 uuid = { version = "1.4.1", features = ["v4", "serde"] }

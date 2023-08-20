@@ -1,17 +1,18 @@
 [package]
 name = "judgment"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.1.1", version = "0.1.1", features = [
+card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.2.1", version = "0.2.1", features = [
     "standard-deck",
 ] }
 rand = "0.8.5"
 rand_chacha = "0.3.1"
-serde = { version = "1.0.183", features = ["derive"], optional = true }
+# https://github.com/serde-rs/serde/issues/2538
+serde = { version = "<=1.0.171", features = ["derive"], optional = true }
 thiserror = "1.0.44"
 
 [features]
