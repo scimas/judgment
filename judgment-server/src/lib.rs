@@ -123,7 +123,7 @@ async fn predictions(
     let predictions = {
         tokio::select! {
             _ = receiver.changed() => (),
-            _ = tokio::time::sleep(Duration::from_secs(30)) => ()
+            _ = tokio::time::sleep(Duration::from_secs(10)) => ()
         };
         receiver.borrow().clone()
     };
@@ -159,7 +159,7 @@ async fn scores(
     let scores = {
         tokio::select! {
             _ = receiver.changed() => (),
-            _ = tokio::time::sleep(Duration::from_secs(120)) => ()
+            _ = tokio::time::sleep(Duration::from_secs(10)) => ()
         };
         receiver.borrow().clone()
     };
@@ -180,7 +180,7 @@ async fn round_scores(
     let scores = {
         tokio::select! {
             _ = receiver.changed() => (),
-            _ = tokio::time::sleep(Duration::from_secs(60)) => ()
+            _ = tokio::time::sleep(Duration::from_secs(10)) => ()
         };
         receiver.borrow().clone()
     };
@@ -201,7 +201,7 @@ async fn trump_suit(
     let suit = {
         tokio::select! {
             _ = receiver.changed() => (),
-            _ = tokio::time::sleep(Duration::from_secs(120)) => ()
+            _ = tokio::time::sleep(Duration::from_secs(10)) => ()
         };
         *receiver.borrow()
     };

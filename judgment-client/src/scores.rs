@@ -1,9 +1,9 @@
-use std::iter;
+use std::{iter, time::Duration};
 
 use either::Either;
 use gloo_net::http::Request;
 use uuid::Uuid;
-use yew::{html, Component, Html, Properties};
+use yew::{html, platform::time::sleep, Component, Html, Properties};
 
 use crate::InvalidRoomId;
 
@@ -113,8 +113,11 @@ impl Component for Scores {
                 false
             }
             Msg::PredictionsUpdated(predictions) => {
-                ctx.link().send_message(Msg::QueryPredictions);
                 if self.predictions == predictions {
+                    ctx.link().send_future(async move {
+                        sleep(Duration::from_secs(5)).await;
+                        Msg::QueryPredictions
+                    });
                     false
                 } else {
                     self.predictions = predictions;
@@ -140,8 +143,11 @@ impl Component for Scores {
                 false
             }
             Msg::ScoresUpdated(scores) => {
-                ctx.link().send_message(Msg::QueryScores);
                 if self.scores == scores {
+                    ctx.link().send_future(async move {
+                        sleep(Duration::from_secs(5)).await;
+                        Msg::QueryScores
+                    });
                     false
                 } else {
                     self.scores = scores;
@@ -168,8 +174,11 @@ impl Component for Scores {
                 false
             }
             Msg::RoundScoresUpdated(scores) => {
-                ctx.link().send_message(Msg::QueryRoundScores);
                 if self.round_scores == scores {
+                    ctx.link().send_future(async move {
+                        sleep(Duration::from_secs(5)).await;
+                        Msg::QueryRoundScores
+                    });
                     false
                 } else {
                     self.round_scores = scores;

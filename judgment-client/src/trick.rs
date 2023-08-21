@@ -1,8 +1,10 @@
+use std::time::Duration;
+
 use card_deck::standard_deck::Suit;
 use either::Either;
 use gloo_net::http::Request;
 use uuid::Uuid;
-use yew::{html, Component, Html, Properties};
+use yew::{html, platform::time::sleep, Component, Html, Properties};
 
 use crate::InvalidRoomId;
 
@@ -31,6 +33,7 @@ impl Component for Trick {
 
     fn create(ctx: &yew::Context<Self>) -> Self {
         ctx.link().send_message(Msg::QueryTrick);
+        ctx.link().send_message(Msg::QueryTrumpSuit);
         Trick::default()
     }
 
@@ -90,8 +93,11 @@ impl Component for Trick {
                 false
             }
             Msg::TrumpSuitUpdated(suit) => {
-                ctx.link().send_message(Msg::QueryTrumpSuit);
                 if self.trump_suit == suit {
+                    ctx.link().send_future(async move {
+                        sleep(Duration::from_secs(10)).await;
+                        Msg::QueryTrumpSuit
+                    });
                     false
                 } else {
                     self.trump_suit = suit;
