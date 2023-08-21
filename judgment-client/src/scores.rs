@@ -121,6 +121,7 @@ impl Component for Scores {
                     false
                 } else {
                     self.predictions = predictions;
+                    ctx.link().send_message(Msg::QueryPredictions);
                     true
                 }
             }
@@ -151,6 +152,7 @@ impl Component for Scores {
                     false
                 } else {
                     self.scores = scores;
+                    ctx.link().send_message(Msg::QueryScores);
                     true
                 }
             }
@@ -182,6 +184,7 @@ impl Component for Scores {
                     false
                 } else {
                     self.round_scores = scores;
+                    ctx.link().send_message(Msg::QueryRoundScores);
                     true
                 }
             }

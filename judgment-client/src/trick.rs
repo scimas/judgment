@@ -40,10 +40,11 @@ impl Component for Trick {
     fn view(&self, _ctx: &yew::Context<Self>) -> yew::Html {
         html! {
             <>
-                <p>{
-                    match &self.trump_suit {
-                        Some(suit) => suit.to_string(),
-                        None => "None".to_string(),
+                <p class={if let Some(suit) = self.trump_suit.as_ref() { suit.name().to_string() } else { String::new() }}>{
+                    if let Some(suit) = self.trump_suit.as_ref() {
+                        suit.to_string()
+                    } else {
+                        "None".to_string()
                     }
                 }</p>
                 <div class="trick">
@@ -101,6 +102,7 @@ impl Component for Trick {
                     false
                 } else {
                     self.trump_suit = suit;
+                    ctx.link().send_message(Msg::QueryTrumpSuit);
                     true
                 }
             }
