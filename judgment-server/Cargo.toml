@@ -1,6 +1,6 @@
 [package]
 name = "judgment-server"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,7 +11,7 @@ card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.2.1", v
     "standard-deck",
     "serde",
 ] }
-judgment = { version = "0.3.0", path = "../judgment", features = ["serde"] }
+judgment = { version = "0.3.1", path = "../judgment", features = ["serde"] }
 log = "0.4.20"
 pasetors = { version = "0.6.7", default-features = false, features = [
     "v4",

@@ -734,7 +734,7 @@ dependencies = [
 
 [[package]]
 name = "judgment"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "card-deck",
  "rand",
@@ -745,7 +745,7 @@ dependencies = [
 
 [[package]]
 name = "judgment-client"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "card-deck",
  "either",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "judgment-server"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "axum",
  "card-deck",
