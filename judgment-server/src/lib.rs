@@ -10,7 +10,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use card_deck::standard_deck::Card;
+use card_deck::standard_deck::{Card, Suit};
 use errors::{InvalidRoomId, PlayError, ResourceDoesNotExist, RoomJoinError, ServerFull};
 use judgment::Trick;
 use pasetors::{keys::AsymmetricKeyPair, version4::V4};
@@ -39,6 +39,7 @@ pub fn judgment_router<P: AsRef<Path>>(
         .route("/api/my_hand", get(hand_of_player))
         .route("/api/scores", get(scores))
         .route("/api/round_scores", get(round_scores))
+        .route("/api/trump_suit", get(trump_suit))
         .fallback_service(serve_dir)
         .with_state(server.clone());
 
@@ -184,6 +185,27 @@ async fn round_scores(
         receiver.borrow().clone()
     };
     Ok(Json(scores))
+}
+
+async fn trump_suit(
+    State(server): State<Arc<RwLock<Server>>>,
+    Query(payload): Query<RoomPayload>,
+) -> Result<Json<Option<Suit>>, InvalidRoomId> {
+    log::info!("received round scores request");
+    let mut receiver = server
+        .read()
+        .await
+        .room(&payload.room_id)?
+        .trump_suit_sender()
+        .subscribe();
+    let suit = {
+        tokio::select! {
+            _ = receiver.changed() => (),
+            _ = tokio::time::sleep(Duration::from_secs(120)) => ()
+        };
+        *receiver.borrow()
+    };
+    Ok(Json(suit))
 }
 
 #[derive(Debug, Serialize)]

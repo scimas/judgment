@@ -1,4 +1,4 @@
-use card_deck::standard_deck::Card;
+use card_deck::standard_deck::{Card, Suit};
 use judgment::{InvalidTransition, Judgment, StateUpdate, Transition, Trick};
 use pasetors::claims::Claims;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,7 @@ pub struct Room {
     predictions_sender: watch::Sender<Vec<Option<u8>>>,
     round_scores_sender: watch::Sender<Vec<u8>>,
     game_scores_sender: watch::Sender<Vec<i64>>,
+    trump_suit_sender: watch::Sender<Option<Suit>>,
 }
 
 impl Room {
@@ -26,6 +27,7 @@ impl Room {
         let (predictions_sender, _) = watch::channel(Vec::new());
         let (round_scores_sender, _) = watch::channel(Vec::new());
         let (game_scores_sender, _) = watch::channel(Vec::new());
+        let (trump_suit_sender, _) = watch::channel(None);
         Room {
             joined_players: 0,
             game,
@@ -34,6 +36,7 @@ impl Room {
             predictions_sender,
             round_scores_sender,
             game_scores_sender,
+            trump_suit_sender,
         }
     }
 
@@ -49,6 +52,8 @@ impl Room {
         self.joined_players += 1;
         if self.is_full() {
             self.game.start().unwrap();
+            self.trump_suit_sender
+                .send_replace(self.game.trump_suit().cloned());
             self.play(Action::Deal, usize::from(self.max_players))
                 .unwrap();
         }
@@ -83,6 +88,8 @@ impl Room {
                         }
                         StateUpdate::GameScores(scores) => {
                             self.game_scores_sender.send_replace(scores);
+                            self.trump_suit_sender
+                                .send_replace(self.game.trump_suit().cloned());
                         }
                         StateUpdate::CardsDealt | StateUpdate::Predictions(_) => {
                             unreachable!("a Transition::Play should never result in this state")
@@ -159,6 +166,10 @@ impl Room {
     /// Check whether the game is over.
     pub fn is_game_over(&self) -> bool {
         self.game.is_over()
+    }
+
+    pub fn trump_suit_sender(&self) -> &watch::Sender<Option<Suit>> {
+        &self.trump_suit_sender
     }
 }
 

@@ -300,6 +300,15 @@ impl Judgment {
             Stage::Play(Round { trick_scores, .. }) => Some(trick_scores),
         }
     }
+
+    pub fn trump_suit(&self) -> Option<&Suit> {
+        match &self.stage {
+            Stage::PrePlay | Stage::Over => None,
+            Stage::Deal(round) | Stage::PredictScores(round) | Stage::Play(round) => {
+                round.trump_suit.as_ref()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
