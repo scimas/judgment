@@ -1,17 +1,17 @@
 [package]
 name = "judgment-server"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 axum = { version = "0.6.20", features = ["headers"] }
-card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.2.1", version = "0.2.1", features = [
+card-deck = { git = "https://github.com/scimas/card-deck.git", tag = "v0.2.2", version = "0.2.2", features = [
     "standard-deck",
     "serde",
 ] }
-judgment = { version = "0.3.1", path = "../judgment", features = ["serde"] }
+judgment = { version = "0.3.2", path = "../judgment", features = ["serde"] }
 log = "0.4.20"
 pasetors = { version = "0.6.7", default-features = false, features = [
     "v4",
@@ -19,7 +19,8 @@ pasetors = { version = "0.6.7", default-features = false, features = [
 ] }
 rand = "0.8.5"
 # https://github.com/serde-rs/serde/issues/2538
-serde = { version = "<=1.0.171", features = ["derive"] }
+# https://github.com/serde-rs/serde/releases/tag/v1.0.184
+serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.105"
 thiserror = "1.0.46"
 tokio = { version = "1.31.0", features = ["macros"] }

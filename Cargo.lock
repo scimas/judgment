@@ -170,8 +170,8 @@ checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
 
 [[package]]
 name = "card-deck"
-version = "0.2.1"
-source = "git+https://github.com/scimas/card-deck.git?tag=v0.2.1#e575b485f82d16e74bea795506d600a02f099f13"
+version = "0.2.2"
+source = "git+https://github.com/scimas/card-deck.git?tag=v0.2.2#0ada1b56ba7d13d4e7ff07d47c1d2f15f96534b4"
 dependencies = [
  "rand",
  "serde",
@@ -734,7 +734,7 @@ dependencies = [
 
 [[package]]
 name = "judgment"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "card-deck",
  "rand",
@@ -745,7 +745,7 @@ dependencies = [
 
 [[package]]
 name = "judgment-client"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "card-deck",
  "either",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "judgment-server"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "axum",
  "card-deck",
@@ -1096,9 +1096,9 @@ checksum = "1ad4cc8da4ef723ed60bced201181d83791ad433213d8c24efffda1eec85d741"
 
 [[package]]
 name = "serde"
-version = "1.0.171"
+version = "1.0.193"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30e27d1e4fd7659406c492fd6cfaf2066ba8773de45ca75e855590f856dc34a9"
+checksum = "25dd9975e68d0cb5aa1120c288333fc98731bd1dd12f561e468ea4728c042b89"
 dependencies = [
  "serde_derive",
 ]
@@ -1116,9 +1116,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.171"
+version = "1.0.193"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "389894603bd18c46fa56231694f8d827779c0951a667087194cf9de94ed24682"
+checksum = "43576ca501357b9b071ac53cdc7da8ef0cbd9493d8df094cd821777ea6e894d3"
 dependencies = [
  "proc-macro2",
  "quote",
